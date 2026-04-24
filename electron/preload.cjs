@@ -1,6 +1,6 @@
-const { contextBridge } = require("electron");
+const { contextBridge, ipcRenderer } = require("electron");
 
-// Expose safe APIs to the renderer process here if needed
 contextBridge.exposeInMainWorld("electronAPI", {
   platform: process.platform,
+  focusWindow: () => ipcRenderer.invoke("focus-window"),
 });

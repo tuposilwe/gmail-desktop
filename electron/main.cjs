@@ -1,4 +1,4 @@
-const { app, BrowserWindow, shell, session } = require("electron");
+const { app, BrowserWindow, shell, session, Tray, Menu, nativeImage, ipcMain } = require("electron");
 const path = require("path");
 
 const isDev = process.env.NODE_ENV === "development";
@@ -48,8 +48,31 @@ async function applySetCookieHeaders(ses, setCookieHeaders) {
   }
 }
 
+let mainWindow = null;
+let tray = null;
+
+function createTray() {
+  const iconPath = path.join(__dirname, "../public/icon_48x48.png");
+  const icon = nativeImage.createFromPath(iconPath).resize({ width: 16, height: 16 });
+  tray = new Tray(icon);
+  tray.setToolTip("Yanamail");
+  tray.setContextMenu(Menu.buildFromTemplate([
+    {
+      label: "Show",
+      click: () => { mainWindow?.show(); mainWindow?.focus(); },
+    },
+    { type: "separator" },
+    {
+      label: "Quit",
+      click: () => { app.isQuiting = true; app.quit(); },
+    },
+  ]));
+  // Single-click tray icon to restore the window
+  tray.on("click", () => { mainWindow?.show(); mainWindow?.focus(); });
+}
+
 function createWindow() {
-  const win = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
     minWidth: 900,
@@ -67,21 +90,29 @@ function createWindow() {
     show: false,
   });
 
-  win.setMenu(null);
+  mainWindow.setMenu(null);
 
   // win.webContents.openDevTools();
 
   if (isDev) {
-    win.loadURL("http://localhost:3000");
+    mainWindow.loadURL("http://localhost:3000");
   } else {
-    win.loadFile(path.join(__dirname, "../dist/index.html"));
+    mainWindow.loadFile(path.join(__dirname, "../dist/index.html"));
   }
 
-  win.once("ready-to-show", () => win.show());
+  mainWindow.once("ready-to-show", () => mainWindow.show());
 
-  win.webContents.setWindowOpenHandler(({ url }) => {
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
     return { action: "deny" };
+  });
+
+  // Hide to tray instead of quitting when the window is closed
+  mainWindow.on("close", (e) => {
+    if (!app.isQuiting) {
+      e.preventDefault();
+      mainWindow.hide();
+    }
   });
 }
 
@@ -120,11 +151,28 @@ app.whenReady().then(() => {
   }
 
   createWindow();
+  createTray();
+
+  // Renderer asks main process to restore and focus the window (e.g. notification click)
+  ipcMain.handle("focus-window", () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  });
+
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
 });
 
+// Don't quit when all windows close — keep running in the tray for background notifications.
+// The user must choose Quit from the tray menu to exit.
 app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") app.quit();
+  if (process.platform === "darwin") app.hide();
+});
+
+app.on("before-quit", () => {
+  app.isQuiting = true;
 });

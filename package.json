@@ -30,6 +30,7 @@
   "build": {
     "appId": "com.yana.client",
     "productName": "Yanamail",
+    "npmRebuild": false,
     "directories": {
       "output": "dist-electron"
     },

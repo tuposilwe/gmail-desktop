@@ -4442,10 +4442,14 @@ export default function GmailUI({ userEmail, onLogout }) {
           body,
           icon: "/YanaCorp-Logo-Blue.png",
           tag: newEmails.length === 1 ? `email-${first.id}` : "email-batch",
-          requireInteraction: true,
+          // requireInteraction: true,
         });
         n.onclick = () => {
-          window.focus();
+          if (window.electronAPI?.focusWindow) {
+            window.electronAPI.focusWindow();
+          } else {
+            window.focus();
+          }
           setActiveNavRef.current("Inbox");
           if (newEmails.length === 1) setSelectedIdRef.current(first.id);
           n.close();
