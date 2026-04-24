@@ -1,5 +1,6 @@
 const { app, BrowserWindow, shell, session, Tray, Menu, nativeImage, ipcMain } = require("electron");
 const path = require("path");
+const fs = require("fs");
 
 const isDev = process.env.NODE_ENV === "development";
 const BACKEND = "https://test2.yana.dev";
@@ -51,10 +52,30 @@ async function applySetCookieHeaders(ses, setCookieHeaders) {
 let mainWindow = null;
 let tray = null;
 
+function trayLog(msg) {
+  try {
+    fs.appendFileSync(path.join(app.getPath("userData"), "tray.log"), `${new Date().toISOString()} ${msg}\n`);
+  } catch (_) {}
+}
+
 function createTray() {
-  const iconPath = path.join(__dirname, "../public/icon_48x48.png");
-  const icon = nativeImage.createFromPath(iconPath).resize({ width: 16, height: 16 });
-  tray = new Tray(icon);
+  try {
+    const iconPath = isDev
+      ? path.join(__dirname, "../public/gmail.png")
+      : path.join(process.resourcesPath, "tray-icon.png");
+
+    trayLog(`iconPath: ${iconPath}`);
+    trayLog(`exists: ${fs.existsSync(iconPath)}`);
+
+    const icon = nativeImage.createFromPath(iconPath).resize({ width: 32, height: 32 });
+    trayLog(`icon empty: ${icon.isEmpty()}`);
+
+    tray = new Tray(icon);
+    trayLog("tray created OK");
+  } catch (err) {
+    trayLog(`ERROR: ${err.message}`);
+    return;
+  }
   tray.setToolTip("Yanamail");
   tray.setContextMenu(Menu.buildFromTemplate([
     {
