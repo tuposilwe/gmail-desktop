@@ -88,8 +88,16 @@ function createTray() {
       click: () => { app.isQuiting = true; app.quit(); },
     },
   ]));
-  // Single-click tray icon to restore the window
-  tray.on("click", () => { mainWindow?.show(); mainWindow?.focus(); });
+  // Single-click tray icon: toggle window visibility
+  tray.on("click", () => {
+    if (!mainWindow) return;
+    if (mainWindow.isVisible()) {
+      mainWindow.hide();
+    } else {
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  });
 }
 
 function createWindow() {
